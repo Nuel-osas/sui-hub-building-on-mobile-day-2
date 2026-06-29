@@ -1,0 +1,30 @@
+# Node / Expo
+node_modules/
+.expo/
+.expo-shared/
+web-build/
+dist/
+*.log
+.pnpm-store/
+
+# Env
+.env
+.env.local
+.env.*.local
+Config.xcconfig
+
+# iOS / Swift / Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+Pods/
+*.ipa
+*.xcarchive
+.build/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

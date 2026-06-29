@@ -1,0 +1,45 @@
+// =============================================================================
+// Tideform (Swift) — build configuration
+//
+// Copy this file to `Config.xcconfig` (gitignored) and fill in your values.
+// In Xcode: Project ▸ Info ▸ Configurations ▸ set Debug + Release to use Config.xcconfig.
+// Then surface each setting at runtime by adding an Info.plist entry that maps the
+// key to the build setting, e.g.  <key>SUI_NETWORK</key><string>$(SUI_NETWORK)</string>
+// (see README "Wiring xcconfig → Info.plist"). Env.swift reads these keys and falls
+// back to the live MAINNET defaults below if a key is missing/unexpanded.
+//
+// ⚠️ xcconfig GOTCHA: `//` starts a comment, which eats the `//` in a URL. Insert an
+// empty `$()` between the slashes so the scheme survives: `https:/$()/host`.
+// =============================================================================
+
+// --- Network -----------------------------------------------------------------
+// "mainnet" | "testnet" | "devnet" | "localnet"
+SUI_NETWORK = mainnet
+
+// --- Tideform Move package (Sui MAINNET, source-of-truth §2) ------------------
+// published-at  — used for moveCall targets
+TIDEFORM_PACKAGE_ID = 0xeafe4800dc71923b1e743f199738aa85fbdc6c8cec55ff138f0d69ee6da72dd4
+// original-id   — used for event type-origin queries (upgrade-stable)
+TIDEFORM_ORIGINAL_PACKAGE_ID = 0xeafe4800dc71923b1e743f199738aa85fbdc6c8cec55ff138f0d69ee6da72dd4
+
+// --- Walrus aggregator (public reads, no auth) -------------------------------
+// MAINNET: https://aggregator.walrus-mainnet.walrus.space
+// TESTNET: https://aggregator.walrus-testnet.walrus.space
+WALRUS_AGGREGATOR = https:/$()/aggregator.walrus-mainnet.walrus.space
+
+// --- Zentos backend (custodial auth + sponsored signing + sponsored uploads) -
+// Defaults to the live deployment so the app works out of the box; override for a
+// self-hosted zentos or localhost (e.g. http:/$()/localhost:3000).
+BACKEND_BASE_URL = https:/$()/tidalform.xyz
+
+// --- Google OAuth (iOS client id from Google Cloud Console) -------------------
+// VERIFY: paste your iOS OAuth *client id*. The native GoogleSignIn-iOS flow yields
+// the ID token you POST to /api/auth/google. Reversed-client-id goes in URL Types.
+GOOGLE_CLIENT_ID = YOUR_IOS_OAUTH_CLIENT_ID.apps.googleusercontent.com
+
+// --- Seal key servers (private fields; comma-separated object IDs) ------------
+// MAINNET free/public key server, threshold 1 (source-of-truth §7).
+// NOTE: Swift has no Seal SDK — private-field DECRYPTION is backend-delegated /
+// out of v1 mobile scope (see README). Public fields work fully.
+SEAL_KEY_SERVERS = 0x4a65b4ff7ba8f4b538895ee35959f982a95f0db7e2a202ec989d261ea927286a
+SEAL_THRESHOLD = 1
