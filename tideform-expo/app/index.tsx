@@ -159,8 +159,9 @@ export default function MyFormsScreen() {
                 <>
                   <Text style={styles.emptyTitle}>No forms yet</Text>
                   <Text style={styles.emptyBody}>
-                    Create a form on tidalform.xyz with this same Google account —
-                    it will appear here.
+                    This device wallet hasn't created any forms. Open a form's
+                    shared link to fill it, or create forms on tidalform.xyz with
+                    this wallet's address.
                   </Text>
                 </>
               )}
