@@ -26,6 +26,8 @@ export interface LocalSignResult {
   digest: string;
   sponsorAddress: string;
   senderAddress: string;
+  /** Object ID of a Form created by this tx (e.g. after form::create), if any. */
+  createdFormId?: string;
 }
 
 interface SponsorResponse {
@@ -71,8 +73,21 @@ export async function signAndExecuteLocal(
   const result = await suiClient.executeTransactionBlock({
     transactionBlock: txBytes,
     signature,
-    options: { showEffects: true },
+    options: { showEffects: true, showObjectChanges: true },
   });
 
-  return { digest: result.digest, sponsorAddress, senderAddress: sender };
+  // Surface a newly-created Form's object ID (handy after form::create).
+  let createdFormId: string | undefined;
+  for (const ch of result.objectChanges ?? []) {
+    if (
+      ch.type === 'created' &&
+      typeof ch.objectType === 'string' &&
+      ch.objectType.endsWith('::form::Form')
+    ) {
+      createdFormId = ch.objectId;
+      break;
+    }
+  }
+
+  return { digest: result.digest, sponsorAddress, senderAddress: sender, createdFormId };
 }

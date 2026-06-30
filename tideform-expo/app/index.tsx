@@ -20,6 +20,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -61,6 +62,23 @@ export default function MyFormsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | undefined>();
+
+  // "Open a form by link or ID" row.
+  const [openInput, setOpenInput] = useState('');
+  const [openError, setOpenError] = useState<string | undefined>();
+
+  // Pull a Sui object id out of a raw 0x id, a deep link
+  // (exp://…/--/f/0x…), or an https://tidalform.xyz/f/0x… share URL.
+  const openById = useCallback(() => {
+    const match = openInput.match(/0x[0-9a-fA-F]{6,64}/);
+    if (!match) {
+      setOpenError("That doesn't look like a form link or 0x… id.");
+      return;
+    }
+    setOpenError(undefined);
+    setOpenInput('');
+    router.push({ pathname: '/f/[id]', params: { id: match[0] } });
+  }, [openInput, router]);
 
   const load = useCallback(
     async (mode: 'initial' | 'refresh') => {
@@ -124,6 +142,33 @@ export default function MyFormsScreen() {
         <Text style={styles.gaslessText}>
           ⚡ Submissions are sponsored — 0 SUI gas, 0 popups.
         </Text>
+      </View>
+
+      <View style={styles.actions}>
+        <Pressable style={styles.createBtn} onPress={() => router.push('/new')}>
+          <Text style={styles.createBtnText}>＋ Create form</Text>
+        </Pressable>
+
+        <View style={styles.openRow}>
+          <TextInput
+            style={styles.openField}
+            value={openInput}
+            onChangeText={(t) => {
+              setOpenInput(t);
+              if (openError) setOpenError(undefined);
+            }}
+            placeholder="Open a form by link or ID"
+            placeholderTextColor={C.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="go"
+            onSubmitEditing={openById}
+          />
+          <Pressable style={styles.openByIdBtn} onPress={openById}>
+            <Text style={styles.openByIdBtnText}>Open</Text>
+          </Pressable>
+        </View>
+        {openError ? <Text style={styles.openError}>{openError}</Text> : null}
       </View>
 
       {loading ? (
@@ -268,6 +313,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   gaslessText: { color: C.primary, fontSize: 12.5, fontWeight: '600' },
+
+  actions: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8, gap: 8 },
+  createBtn: {
+    backgroundColor: C.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  createBtnText: { color: '#06291F', fontSize: 15.5, fontWeight: '800' },
+  openRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  openField: {
+    flex: 1,
+    backgroundColor: C.surface,
+    borderColor: C.border,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    color: C.text,
+    fontSize: 14,
+  },
+  openByIdBtn: {
+    backgroundColor: C.surface,
+    borderColor: C.border,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+  },
+  openByIdBtnText: { color: C.accent, fontSize: 14, fontWeight: '700' },
+  openError: { color: C.danger, fontSize: 12.5, marginTop: 1 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: 16, gap: 12, flexGrow: 1 },

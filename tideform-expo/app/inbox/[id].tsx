@@ -29,6 +29,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -48,6 +49,10 @@ import {
   isSealAvailable,
   listSubmissions,
   sealDecrypt,
+  signAndExecuteLocal,
+  txAddTag,
+  txSubmissionPriority,
+  txSubmissionStatus,
   useAuth,
 } from '@/lib';
 import { FieldRenderer } from '@/components/field-renderer';
@@ -167,6 +172,21 @@ export default function InboxScreen() {
   useEffect(() => {
     void load('initial');
   }, [load]);
+
+  // Optimistically patch one submission's on-chain fields after an admin action
+  // succeeds — keeps the header pills/tags in sync without a full reload.
+  const patchItem = useCallback(
+    (submissionId: string, patch: Partial<SubmissionObject>) => {
+      setItems((prev) =>
+        prev.map((it) =>
+          it.obj.id === submissionId
+            ? { ...it, obj: { ...it.obj, ...patch } }
+            : it,
+        ),
+      );
+    },
+    [],
+  );
 
   async function decryptAll(): Promise<void> {
     if (!form || !user?.address) return;
@@ -294,6 +314,10 @@ export default function InboxScreen() {
               item={it}
               fieldMap={fieldMap}
               decrypted={decrypted}
+              formId={formId}
+              isAdmin={isAdmin}
+              onPatch={(patch) => patchItem(it.obj.id, patch)}
+              onRefresh={() => void load('refresh')}
             />
           ))
         )}
@@ -308,10 +332,18 @@ function SubmissionCard({
   item,
   fieldMap,
   decrypted,
+  formId,
+  isAdmin,
+  onPatch,
+  onRefresh,
 }: {
   item: InboxItem;
   fieldMap: Map<string, Field>;
   decrypted: DecryptMap;
+  formId: string;
+  isAdmin: boolean;
+  onPatch: (patch: Partial<SubmissionObject>) => void;
+  onRefresh: () => void;
 }) {
   const { obj, payload, payloadError } = item;
   return (
@@ -359,6 +391,15 @@ function SubmissionCard({
         </View>
       ) : null}
 
+      {isAdmin ? (
+        <AdminActions
+          obj={obj}
+          formId={formId}
+          onPatch={onPatch}
+          onRefresh={onRefresh}
+        />
+      ) : null}
+
       <View style={styles.divider} />
 
       {payloadError ? (
@@ -378,6 +419,190 @@ function SubmissionCard({
       ) : (
         <Text style={styles.fieldError}>Empty payload.</Text>
       )}
+    </View>
+  );
+}
+
+// ── Admin action bar (rendered only for form owners/admins) ─────────────────────
+
+function AdminActions({
+  obj,
+  formId,
+  onPatch,
+  onRefresh,
+}: {
+  obj: SubmissionObject;
+  formId: string;
+  onPatch: (patch: Partial<SubmissionObject>) => void;
+  onRefresh: () => void;
+}) {
+  // `busy` holds the key of the in-flight action so we can show a spinner on
+  // exactly that control; everything else disables while one is running.
+  const [busy, setBusy] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string>();
+  const [tagText, setTagText] = useState('');
+
+  // Run a builder → sign+sponsor on-device, then optimistically patch the item.
+  async function run(
+    key: string,
+    build: () => Parameters<typeof signAndExecuteLocal>[0],
+    patch: Partial<SubmissionObject>,
+  ): Promise<boolean> {
+    setBusy(key);
+    setActionError(undefined);
+    try {
+      await signAndExecuteLocal(build());
+      onPatch(patch);
+      return true;
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : String(e));
+      // Fall back to a fresh read so the UI never lies about on-chain state.
+      onRefresh();
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function addTag(): Promise<void> {
+    const tag = tagText.trim();
+    if (!tag || obj.tags.includes(tag)) {
+      setTagText('');
+      return;
+    }
+    const ok = await run(
+      'tag',
+      () => txAddTag({ formId, submissionId: obj.id, tag }),
+      { tags: [...obj.tags, tag] },
+    );
+    if (ok) setTagText('');
+  }
+
+  const disabled = busy != null;
+
+  return (
+    <View style={styles.adminBar}>
+      <Text style={styles.adminLabel}>Status</Text>
+      <View style={styles.adminRow}>
+        {SUB_STATUS.map((label, i) => {
+          const active = obj.status === i;
+          const key = `status-${i}`;
+          return (
+            <Pressable
+              key={label}
+              disabled={disabled || active}
+              onPress={() =>
+                void run(
+                  key,
+                  () =>
+                    txSubmissionStatus({
+                      formId,
+                      submissionId: obj.id,
+                      status: i,
+                    }),
+                  { status: i },
+                )
+              }
+              style={[
+                styles.adminPill,
+                active && styles.adminPillActive,
+                disabled && !active && styles.adminPillFaded,
+              ]}
+            >
+              {busy === key ? (
+                <ActivityIndicator size="small" color={C.primary} />
+              ) : (
+                <Text
+                  style={[
+                    styles.adminPillText,
+                    active && styles.adminPillTextActive,
+                  ]}
+                >
+                  {label}
+                </Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Text style={styles.adminLabel}>Priority</Text>
+      <View style={styles.adminRow}>
+        {PRIORITY.map((label, i) => {
+          const active = obj.priority === i;
+          const color = PRIORITY_COLOR[i] ?? C.muted;
+          const key = `prio-${i}`;
+          return (
+            <Pressable
+              key={label}
+              disabled={disabled || active}
+              onPress={() =>
+                void run(
+                  key,
+                  () =>
+                    txSubmissionPriority({
+                      formId,
+                      submissionId: obj.id,
+                      priority: i,
+                    }),
+                  { priority: i },
+                )
+              }
+              style={[
+                styles.adminPill,
+                active && { borderColor: color, backgroundColor: C.surface2 },
+                disabled && !active && styles.adminPillFaded,
+              ]}
+            >
+              {busy === key ? (
+                <ActivityIndicator size="small" color={color} />
+              ) : (
+                <Text
+                  style={[
+                    styles.adminPillText,
+                    active && { color, fontWeight: '800' },
+                  ]}
+                >
+                  {label}
+                </Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Text style={styles.adminLabel}>Add tag</Text>
+      <View style={styles.tagAddRow}>
+        <TextInput
+          value={tagText}
+          onChangeText={setTagText}
+          placeholder="e.g. follow-up"
+          placeholderTextColor={C.muted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!disabled}
+          onSubmitEditing={() => void addTag()}
+          style={styles.tagInput}
+        />
+        <Pressable
+          disabled={disabled || tagText.trim().length === 0}
+          onPress={() => void addTag()}
+          style={[
+            styles.tagAddBtn,
+            (disabled || tagText.trim().length === 0) && styles.btnDisabled,
+          ]}
+        >
+          {busy === 'tag' ? (
+            <ActivityIndicator size="small" color="#06291F" />
+          ) : (
+            <Text style={styles.tagAddBtnText}>Add</Text>
+          )}
+        </Pressable>
+      </View>
+
+      {actionError ? (
+        <Text style={styles.adminError}>{actionError}</Text>
+      ) : null}
     </View>
   );
 }
@@ -570,6 +795,61 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   tagText: { color: C.accent, fontSize: 11.5 },
+
+  adminBar: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    gap: 6,
+  },
+  adminLabel: {
+    color: C.muted,
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginTop: 4,
+  },
+  adminRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  adminPill: {
+    backgroundColor: C.surface2,
+    borderColor: C.border,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    minHeight: 28,
+    justifyContent: 'center',
+  },
+  adminPillActive: { borderColor: C.primary, backgroundColor: C.surface2 },
+  adminPillFaded: { opacity: 0.5 },
+  adminPillText: { color: C.muted, fontSize: 11, fontWeight: '700' },
+  adminPillTextActive: { color: C.primary, fontWeight: '800' },
+
+  tagAddRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  tagInput: {
+    flex: 1,
+    backgroundColor: C.surface2,
+    borderColor: C.border,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: C.text,
+    fontSize: 13.5,
+  },
+  tagAddBtn: {
+    backgroundColor: C.primary,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    minWidth: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tagAddBtnText: { color: '#06291F', fontSize: 13.5, fontWeight: '800' },
+  adminError: { color: C.danger, fontSize: 12, marginTop: 2 },
 
   divider: {
     height: 1,

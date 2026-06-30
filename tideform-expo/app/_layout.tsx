@@ -84,6 +84,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="index" options={{ title: 'My Forms' }} />
+          <Stack.Screen name="new" options={{ title: 'New form' }} />
           <Stack.Screen name="f/[id]" options={{ title: 'Form' }} />
           <Stack.Screen name="inbox/[id]" options={{ title: 'Inbox' }} />
         </Stack>
