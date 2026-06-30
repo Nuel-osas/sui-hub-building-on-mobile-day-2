@@ -59,7 +59,10 @@ function getSealClient(): SealClient {
     // builds used `serverObjectIds: string[]`. Adjust if your installed version
     // differs.
     _client = new SealClient({
-      suiClient,
+      // @mysten/seal bundles its own copy of @mysten/sui, so the SuiClient type
+      // is structurally-but-not-nominally identical. Cast across the version gap
+      // (same workaround the Tideform web app uses).
+      suiClient: suiClient as unknown as ConstructorParameters<typeof SealClient>[0]["suiClient"],
       serverConfigs: env.sealKeyServers.map((objectId) => ({
         objectId,
         weight: 1,
@@ -209,7 +212,8 @@ export async function createCustodialSessionKey(
     address,
     packageId: env.packageId,
     ttlMin,
-    suiClient,
+    // Cast across the @mysten/seal-bundled @mysten/sui version gap (see getSealClient).
+    suiClient: suiClient as unknown as Parameters<typeof SessionKey.create>[0]["suiClient"],
   });
   const personalMessage = sessionKey.getPersonalMessage();
   const { signature } = await custodialSignMessage(personalMessage);
