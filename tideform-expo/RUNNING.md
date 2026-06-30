@@ -25,7 +25,7 @@ Emulator instead of a phone: `npm run android` (needs Android Studio + an AVD ru
 
 ## The Node-version gotcha (why `start.sh` exists)
 
-Expo SDK 52's CLI does **not** boot under today's Node LTS lines (20.19+, 22.18+, 23, 25).
+Expo SDK 54's CLI does **not** boot under today's Node LTS lines (20.19+, 22.18+, 23, 25).
 Recent Node enables `require(esm)` + TypeScript type-stripping by default, which pre-empts
 Expo's own `.ts` transpile hook and then errors on packages whose `main` is a `.ts` file
 (`expo-modules-core/src/index.ts`):
@@ -53,12 +53,12 @@ npx expo start
 
 ```bash
 npx expo export --platform web      # ✅ 1015 modules, routes: / /login /f/[id] /inbox/[id]
-npx expo export --platform android  # ✅ 1286 modules, 5.14 MB Hermes bundle
+npx expo export --platform android  # ✅ 1377 modules, 5.35 MB Hermes bundle
 ```
 
 ## Notes
 
-- **Auth on a phone:** Google sign-in is wired to tidalform's **web** OAuth client. On SDK 52
+- **Auth on a phone:** Google sign-in is wired to tidalform's **web** OAuth client. On SDK 54
   the web client signs in from a **browser** (`npm run web`) out of the box. For native
   Google sign-in on a real Android/iOS device you need a platform OAuth client (Android/iOS)
   in the same Google Cloud project — see the repo `README` and `lib/auth.ts`.

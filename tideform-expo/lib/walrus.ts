@@ -15,7 +15,10 @@
  */
 
 import { toBase64 } from '@mysten/sui/utils';
-import * as FileSystem from 'expo-file-system';
+// SDK 54 rewrote expo-file-system; the cacheDirectory / writeAsStringAsync /
+// EncodingType / deleteAsync API we use for staging multipart uploads now lives
+// under the /legacy entry point.
+import * as FileSystem from 'expo-file-system/legacy';
 
 import { cookieFetch } from './cookies';
 import { env } from './env';
