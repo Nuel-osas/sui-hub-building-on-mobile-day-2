@@ -29,19 +29,22 @@ import {
 } from 'react-native';
 
 import { blobUrl, type Field } from '@/lib';
+import { colors } from '@/lib/theme';
 
+// Tidalform light theme (lib/theme.ts), mapped onto this file's local keys so
+// every control below flips to light without touching each style.
 const C = {
-  surface: '#0F1830',
-  surfaceSel: 'rgba(45,212,191,0.14)',
-  border: '#26324B',
-  borderSel: '#2DD4BF',
-  text: '#E7EEF8',
-  muted: '#94A3B8',
-  primary: '#2DD4BF',
-  accent: '#60A5FA',
-  warn: '#FBBF24',
-  danger: '#F87171',
-  star: '#FBBF24',
+  surface: colors.surface, // white input background
+  surfaceSel: '#0890BA14', // light primary tint for selected option/chip
+  border: colors.border,
+  borderSel: colors.primary,
+  text: colors.text, // navy label + input text
+  muted: colors.muted,
+  primary: colors.primary,
+  accent: colors.primary, // links use the brand cyan
+  warn: colors.warning,
+  danger: colors.danger,
+  star: colors.warning,
 };
 
 export interface FieldRendererProps {

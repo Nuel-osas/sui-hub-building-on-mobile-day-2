@@ -16,15 +16,17 @@ import React from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { blobUrl, env } from '@/lib';
+import { colors } from '@/lib/theme';
 
+// Tidalform light theme, mapped onto this file's local keys.
 const C = {
-  surface: '#121C32',
-  border: '#26324B',
-  text: '#E7EEF8',
-  muted: '#94A3B8',
-  primary: '#2DD4BF',
-  accent: '#60A5FA',
-  ok: '#34D399',
+  surface: colors.surface,
+  border: colors.border,
+  text: colors.text,
+  muted: colors.muted,
+  primary: colors.primary,
+  accent: colors.primary,
+  ok: colors.success,
 };
 
 export interface ReceiptProps {
@@ -138,7 +140,7 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   check: {
-    color: '#06291F',
+    color: '#FFFFFF',
     backgroundColor: C.ok,
     width: 26,
     height: 26,
@@ -150,8 +152,8 @@ const styles = StyleSheet.create({
   },
   title: { color: C.text, fontSize: 17, fontWeight: '700' },
   badge: {
-    backgroundColor: 'rgba(45,212,191,0.12)',
-    borderColor: 'rgba(45,212,191,0.35)',
+    backgroundColor: '#0890BA14',
+    borderColor: '#0890BA40',
     borderWidth: 1,
     borderRadius: 999,
     paddingVertical: 6,
@@ -163,7 +165,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#0F1830',
+    backgroundColor: colors.surfaceLift,
     borderColor: C.border,
     borderWidth: 1,
     borderRadius: 10,
