@@ -28,23 +28,64 @@ export function blobUrl(blobId: string): string {
   return `${env.walrusAggregator}/v1/blobs/${blobId}`;
 }
 
-/** Read a blob's raw bytes from the public aggregator. */
-export async function readBlob(blobId: string): Promise<Uint8Array> {
-  const res = await fetch(blobUrl(blobId));
-  if (!res.ok) {
-    throw new Error(`Walrus read failed for ${blobId}: ${res.status} ${res.statusText}`);
-  }
-  const buf = await res.arrayBuffer();
-  return new Uint8Array(buf);
+// Public aggregators are individually flaky (occasional 403/5xx/timeouts), and a
+// single failed schema read would break BOTH the fill screen and the inbox. So
+// reads try the configured aggregator first, then fall back across several public
+// mirrors, retrying each. All of these were verified serving mainnet blobs.
+const MAINNET_AGGREGATORS = [
+  'https://aggregator.walrus-mainnet.walrus.space',
+  'https://aggregator.walrus.atalma.io',
+  'https://sui-walrus-mainnet-aggregator.bwarelabs.com',
+  'https://walrus.globalstake.io',
+];
+const TESTNET_AGGREGATORS = [
+  'https://aggregator.walrus-testnet.walrus.space',
+];
+
+function aggregatorsToTry(): string[] {
+  const fallbacks =
+    env.network === 'mainnet' ? MAINNET_AGGREGATORS : TESTNET_AGGREGATORS;
+  // Configured aggregator first, then the rest, de-duplicated.
+  return Array.from(new Set([env.walrusAggregator, ...fallbacks]));
 }
 
-/** Read a blob and parse it as JSON. */
-export async function readJson<T = unknown>(blobId: string): Promise<T> {
-  const res = await fetch(blobUrl(blobId));
-  if (!res.ok) {
-    throw new Error(`Walrus read failed for ${blobId}: ${res.status} ${res.statusText}`);
+async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
   }
-  return (await res.json()) as T;
+}
+
+/**
+ * Read a blob's raw bytes, trying each aggregator (configured first) with one
+ * retry apiece. Throws only if every aggregator fails.
+ */
+export async function readBlob(blobId: string): Promise<Uint8Array> {
+  const aggs = aggregatorsToTry();
+  let lastErr = '';
+  for (const agg of aggs) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const res = await fetchWithTimeout(`${agg}/v1/blobs/${blobId}`, 12_000);
+        if (res.ok) {
+          return new Uint8Array(await res.arrayBuffer());
+        }
+        lastErr = `${agg} → ${res.status} ${res.statusText}`;
+      } catch (e) {
+        lastErr = `${agg} → ${e instanceof Error ? e.message : String(e)}`;
+      }
+    }
+  }
+  throw new Error(`Walrus read failed for ${blobId}: ${lastErr}`);
+}
+
+/** Read a blob and parse it as JSON (uses the resilient multi-aggregator reader). */
+export async function readJson<T = unknown>(blobId: string): Promise<T> {
+  const bytes = await readBlob(blobId);
+  return JSON.parse(new TextDecoder().decode(bytes)) as T;
 }
 
 export interface UploadOptions {

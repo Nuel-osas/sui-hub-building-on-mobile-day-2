@@ -25,7 +25,11 @@ const FORM_CREATED = `${env.originalPackageId}::events::FormCreated`;
 const SUBMISSION_RECEIVED = `${env.originalPackageId}::events::SubmissionReceived`;
 
 const MULTIGET_CHUNK = 50; // Sui multiGetObjects cap per call.
-const MAX_EVENT_PAGES = 50; // safety bound for the teaching app.
+// Mobile bound: events are scanned newest-first and filtered client-side, so a
+// just-created form / just-submitted response is on page 1. 10 pages (500 events)
+// keeps the inbox/my-forms reads fast on a phone. Older items past this are not
+// listed (acceptable for the workshop app).
+const MAX_EVENT_PAGES = 10;
 
 // ── Parsed on-chain object shapes ─────────────────────────────────────────────
 
