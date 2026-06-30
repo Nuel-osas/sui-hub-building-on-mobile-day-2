@@ -20,10 +20,8 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   type FormObject,
@@ -31,23 +29,19 @@ import {
   listFormsForOwner,
   useAuth,
 } from '@/lib';
-
-const C = {
-  bg: '#0B1221',
-  surface: '#121C32',
-  surface2: '#0F1830',
-  border: '#26324B',
-  text: '#E7EEF8',
-  muted: '#94A3B8',
-  primary: '#2DD4BF',
-  accent: '#60A5FA',
-  danger: '#F87171',
-  warn: '#FBBF24',
-  ok: '#34D399',
-};
+import { colors, mono, radius, shortAddr, space } from '@/lib/theme';
+import {
+  Banner,
+  Card,
+  Field,
+  GradientButton,
+  OutlineButton,
+  Pill,
+  Screen,
+} from '@/components/ui';
 
 const FORM_STATUS = ['OPEN', 'CLOSED', 'ARCHIVED'];
-const STATUS_COLOR = [C.ok, C.warn, C.muted];
+const STATUS_TONE = ['success', 'warning', 'muted'] as const;
 
 interface FormRow extends FormObject {
   title: string;
@@ -118,7 +112,7 @@ export default function MyFormsScreen() {
   }, [load]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <Screen edges={['bottom']}>
       <View style={styles.headerBar}>
         <View style={{ flex: 1 }}>
           <Text style={styles.hello} numberOfLines={1}>
@@ -128,29 +122,26 @@ export default function MyFormsScreen() {
             {address ? shortAddr(address) : ''}
           </Text>
         </View>
-        <Pressable
-          style={styles.signOut}
+        <OutlineButton
+          label="Sign out"
           onPress={() => {
             void signOut();
           }}
-        >
-          <Text style={styles.signOutText}>Sign out</Text>
-        </Pressable>
+          style={styles.signOut}
+        />
       </View>
 
       <View style={styles.gaslessNote}>
-        <Text style={styles.gaslessText}>
+        <Banner tone="success">
           ⚡ Submissions are sponsored — 0 SUI gas, 0 popups.
-        </Text>
+        </Banner>
       </View>
 
       <View style={styles.actions}>
-        <Pressable style={styles.createBtn} onPress={() => router.push('/new')}>
-          <Text style={styles.createBtnText}>＋ Create form</Text>
-        </Pressable>
+        <GradientButton label="＋ Create form" onPress={() => router.push('/new')} />
 
         <View style={styles.openRow}>
-          <TextInput
+          <Field
             style={styles.openField}
             value={openInput}
             onChangeText={(t) => {
@@ -158,22 +149,24 @@ export default function MyFormsScreen() {
               if (openError) setOpenError(undefined);
             }}
             placeholder="Open a form by link or ID"
-            placeholderTextColor={C.muted}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="go"
             onSubmitEditing={openById}
           />
-          <Pressable style={styles.openByIdBtn} onPress={openById}>
-            <Text style={styles.openByIdBtnText}>Open</Text>
-          </Pressable>
+          <OutlineButton
+            label="Open"
+            tone="primary"
+            onPress={openById}
+            style={styles.openByIdBtn}
+          />
         </View>
         {openError ? <Text style={styles.openError}>{openError}</Text> : null}
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={C.primary} size="large" />
+          <ActivityIndicator color={colors.primary} size="large" />
         </View>
       ) : (
         <FlatList
@@ -184,7 +177,7 @@ export default function MyFormsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => void load('refresh')}
-              tintColor={C.primary}
+              tintColor={colors.primary}
             />
           }
           ListEmptyComponent={
@@ -193,12 +186,11 @@ export default function MyFormsScreen() {
                 <>
                   <Text style={styles.emptyTitle}>Couldn't load forms</Text>
                   <Text style={styles.emptyBody}>{error}</Text>
-                  <Pressable
-                    style={styles.retry}
+                  <GradientButton
+                    label="Retry"
                     onPress={() => void load('initial')}
-                  >
-                    <Text style={styles.retryText}>Retry</Text>
-                  </Pressable>
+                    style={styles.retry}
+                  />
                 </>
               ) : (
                 <>
@@ -214,191 +206,133 @@ export default function MyFormsScreen() {
           }
           renderItem={({ item }) => (
             <Pressable
-              style={styles.card}
               onPress={() =>
                 router.push({ pathname: '/f/[id]', params: { id: item.id } })
               }
+              style={({ pressed }) => (pressed ? styles.cardPressed : null)}
             >
-              <View style={styles.cardTop}>
-                <Text style={styles.cardTitle} numberOfLines={2}>
-                  {item.title}
-                </Text>
-                <View
-                  style={[
-                    styles.statusPill,
-                    { borderColor: STATUS_COLOR[item.status] ?? C.muted },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusText,
-                      { color: STATUS_COLOR[item.status] ?? C.muted },
-                    ]}
-                  >
-                    {FORM_STATUS[item.status] ?? `?${item.status}`}
+              <Card style={styles.card}>
+                <View style={styles.cardTop}>
+                  <Text style={styles.cardTitle} numberOfLines={2}>
+                    {item.title}
                   </Text>
+                  <Pill
+                    label={FORM_STATUS[item.status] ?? `?${item.status}`}
+                    tone={STATUS_TONE[item.status] ?? 'muted'}
+                  />
                 </View>
-              </View>
 
-              <Text style={styles.cardMeta}>
-                {item.submissionsCount}{' '}
-                {item.submissionsCount === 1 ? 'submission' : 'submissions'} · v
-                {item.version}
-              </Text>
+                <Text style={styles.cardMeta}>
+                  {item.submissionsCount}{' '}
+                  {item.submissionsCount === 1 ? 'submission' : 'submissions'} · v
+                  {item.version}
+                </Text>
 
-              <View style={styles.cardActions}>
-                <Pressable
-                  style={styles.openBtn}
-                  onPress={() =>
-                    router.push({ pathname: '/f/[id]', params: { id: item.id } })
-                  }
-                >
-                  <Text style={styles.openBtnText}>Open / fill</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.inboxBtn}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/inbox/[id]',
-                      params: { id: item.id },
-                    })
-                  }
-                >
-                  <Text style={styles.inboxBtnText}>
-                    Inbox ({item.submissionsCount}) →
-                  </Text>
-                </Pressable>
-              </View>
+                <View style={styles.cardActions}>
+                  <Pressable
+                    style={styles.openBtn}
+                    onPress={() =>
+                      router.push({ pathname: '/f/[id]', params: { id: item.id } })
+                    }
+                  >
+                    <Text style={styles.openBtnText}>Open / fill</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.inboxBtn}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/inbox/[id]',
+                        params: { id: item.id },
+                      })
+                    }
+                  >
+                    <Text style={styles.inboxBtnText}>
+                      Inbox ({item.submissionsCount}) →
+                    </Text>
+                  </Pressable>
+                </View>
+              </Card>
             </Pressable>
           )}
         />
       )}
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-function shortAddr(a: string): string {
-  return a.length > 14 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a;
-}
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
   headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 8,
-    gap: 12,
+    paddingHorizontal: space.md,
+    paddingTop: space.sm,
+    paddingBottom: space.sm,
+    gap: space.md,
   },
-  hello: { color: C.text, fontSize: 20, fontWeight: '800' },
-  addr: { color: C.muted, fontSize: 12, fontFamily: 'Courier' },
-  signOut: {
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  signOutText: { color: C.muted, fontSize: 13, fontWeight: '600' },
+  hello: { color: colors.text, fontSize: 20, fontWeight: '800' },
+  addr: { color: colors.muted, fontSize: 12, fontFamily: mono, marginTop: 2 },
+  signOut: { paddingVertical: 10, paddingHorizontal: 16 },
 
   gaslessNote: {
-    marginHorizontal: 16,
-    marginBottom: 6,
-    backgroundColor: 'rgba(45,212,191,0.1)',
-    borderColor: 'rgba(45,212,191,0.3)',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: space.md,
+    paddingBottom: space.xs,
   },
-  gaslessText: { color: C.primary, fontSize: 12.5, fontWeight: '600' },
 
-  actions: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8, gap: 8 },
-  createBtn: {
-    backgroundColor: C.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
+  actions: {
+    paddingHorizontal: space.md,
+    paddingTop: space.xs,
+    paddingBottom: space.sm,
+    gap: space.sm,
   },
-  createBtnText: { color: '#06291F', fontSize: 15.5, fontWeight: '800' },
-  openRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  openField: {
-    flex: 1,
-    backgroundColor: C.surface,
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    color: C.text,
-    fontSize: 14,
-  },
-  openByIdBtn: {
-    backgroundColor: C.surface,
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-  },
-  openByIdBtnText: { color: C.accent, fontSize: 14, fontWeight: '700' },
-  openError: { color: C.danger, fontSize: 12.5, marginTop: 1 },
+  openRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  openField: { flex: 1 },
+  openByIdBtn: { paddingVertical: 12, paddingHorizontal: 18 },
+  openError: { color: colors.danger, fontSize: 12.5, marginTop: 1 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  listContent: { padding: 16, gap: 12, flexGrow: 1 },
+  listContent: { padding: space.md, gap: space.md, flexGrow: 1 },
 
-  card: {
-    backgroundColor: C.surface,
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-    gap: 10,
-  },
+  card: { gap: space.sm },
+  cardPressed: { opacity: 0.85 },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: space.sm,
   },
-  cardTitle: { color: C.text, fontSize: 16.5, fontWeight: '700', flex: 1 },
-  statusPill: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-  },
-  statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
-  cardMeta: { color: C.muted, fontSize: 13 },
-  cardActions: { flexDirection: 'row', gap: 10, marginTop: 2 },
+  cardTitle: { color: colors.text, fontSize: 16.5, fontWeight: '700', flex: 1 },
+  cardMeta: { color: colors.muted, fontSize: 13 },
+  cardActions: { flexDirection: 'row', gap: space.sm, marginTop: 2 },
   openBtn: {
-    backgroundColor: 'rgba(45,212,191,0.14)',
-    borderColor: 'rgba(45,212,191,0.4)',
+    backgroundColor: '#0890BA14',
+    borderColor: '#0890BA40',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.chip,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  openBtnText: { color: C.primary, fontSize: 13.5, fontWeight: '700' },
+  openBtnText: { color: colors.primary, fontSize: 13.5, fontWeight: '700' },
   inboxBtn: {
-    borderColor: C.border,
+    borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.chip,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  inboxBtnText: { color: C.accent, fontSize: 13.5, fontWeight: '700' },
+  inboxBtnText: { color: colors.indigo, fontSize: 13.5, fontWeight: '700' },
 
-  empty: { alignItems: 'center', gap: 10, paddingTop: 64, paddingHorizontal: 24 },
-  emptyTitle: { color: C.text, fontSize: 17, fontWeight: '700' },
-  emptyBody: { color: C.muted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  retry: {
-    marginTop: 6,
-    backgroundColor: C.primary,
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+  empty: {
+    alignItems: 'center',
+    gap: space.sm,
+    paddingTop: 64,
+    paddingHorizontal: space.xl,
   },
-  retryText: { color: '#06291F', fontWeight: '800' },
+  emptyTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  emptyBody: {
+    color: colors.muted,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  retry: { marginTop: space.xs },
 });

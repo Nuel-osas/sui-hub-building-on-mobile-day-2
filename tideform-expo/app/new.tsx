@@ -16,7 +16,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,13 +23,11 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  type Field,
+  type Field as SchemaField,
   type FieldType,
   type FormSchema,
   signAndExecuteLocal,
@@ -38,20 +35,17 @@ import {
   uploadJson,
   useAuth,
 } from '@/lib';
-
-const C = {
-  bg: '#0B1221',
-  surface: '#121C32',
-  surface2: '#0F1830',
-  border: '#26324B',
-  text: '#E7EEF8',
-  muted: '#94A3B8',
-  primary: '#2DD4BF',
-  accent: '#60A5FA',
-  danger: '#F87171',
-  warn: '#FBBF24',
-  ok: '#34D399',
-};
+import { colors, mono, radius, space } from '@/lib/theme';
+import {
+  Banner,
+  Card,
+  Chip,
+  Field,
+  GradientButton,
+  OutlineButton,
+  Screen,
+  SectionLabel,
+} from '@/components/ui';
 
 // The non-media field types, in builder order (media types are upload-only and
 // can't be authored from the phone here).
@@ -229,8 +223,8 @@ export default function NewFormScreen() {
 
   // ── Assemble the exported FormSchema from the editor state ─────────────────
   function assembleSchema(): FormSchema {
-    const outFields: Field[] = fields.map((f) => {
-      const field: Field = {
+    const outFields: SchemaField[] = fields.map((f) => {
+      const field: SchemaField = {
         id: f.id,
         type: f.type,
         label: f.label.trim(),
@@ -313,37 +307,34 @@ export default function NewFormScreen() {
   // ── Done state ────────────────────────────────────────────────────────────
   if (phase === 'done' && createdFormId) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Screen edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.doneWrap}>
-          <View style={styles.card}>
+          <Card style={styles.cardGap}>
             <Text style={styles.doneTitle}>Form created 🎉</Text>
             <Text style={styles.doneNote}>
               Your form is live on-chain. Share its link or open the inbox to
               watch submissions land.
             </Text>
-            <Text style={styles.fieldLabel}>Form ID</Text>
+            <SectionLabel>Form ID</SectionLabel>
             <Text style={styles.mono} selectable>
               {createdFormId}
             </Text>
-          </View>
+          </Card>
 
-          <Pressable
-            style={styles.primaryBtn}
+          <GradientButton
+            label="Fill it"
             onPress={() => router.push(`/f/${createdFormId}`)}
-          >
-            <Text style={styles.primaryBtnText}>Fill it</Text>
-          </Pressable>
-          <Pressable
-            style={styles.secondaryBtn}
+          />
+          <OutlineButton
+            label="View inbox"
+            tone="primary"
             onPress={() => router.push(`/inbox/${createdFormId}`)}
-          >
-            <Text style={styles.secondaryBtnText}>View inbox</Text>
-          </Pressable>
+          />
           <Pressable style={styles.ghostBtn} onPress={() => router.replace('/')}>
             <Text style={styles.ghostBtnText}>Back to My Forms</Text>
           </Pressable>
         </ScrollView>
-      </SafeAreaView>
+      </Screen>
     );
   }
 
@@ -351,7 +342,7 @@ export default function NewFormScreen() {
   const busy = phase === 'creating';
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <Screen edges={['bottom']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -366,48 +357,41 @@ export default function NewFormScreen() {
           </Text>
 
           {!address ? (
-            <View style={[styles.banner, styles.bannerWarn]}>
-              <Text style={styles.bannerWarnText}>
-                No device wallet detected — sign in first to create a form.
-              </Text>
-            </View>
+            <Banner tone="warning">
+              No device wallet detected — sign in first to create a form.
+            </Banner>
           ) : null}
 
           {/* ── Basics ───────────────────────────────────────────────────── */}
-          <View style={styles.card}>
+          <Card style={styles.cardGap}>
             <Text style={styles.cardHeading}>Basics</Text>
 
-            <Text style={styles.fieldLabel}>Title *</Text>
-            <TextInput
-              style={styles.input}
+            <Field
+              label="Title *"
               value={title}
               onChangeText={setTitle}
               placeholder="e.g. Bug report"
-              placeholderTextColor={C.muted}
             />
 
-            <Text style={styles.fieldLabel}>Description</Text>
-            <TextInput
-              style={[styles.input, styles.inputMultiline]}
+            <Field
+              label="Description"
               value={description}
               onChangeText={setDescription}
               placeholder="What is this form for? (optional)"
-              placeholderTextColor={C.muted}
               multiline
+              numberOfLines={4}
             />
 
-            <Text style={styles.fieldLabel}>Success message</Text>
-            <TextInput
-              style={styles.input}
+            <Field
+              label="Success message"
               value={successMessage}
               onChangeText={setSuccessMessage}
               placeholder={DEFAULT_SUCCESS}
-              placeholderTextColor={C.muted}
             />
-          </View>
+          </Card>
 
           {/* ── Settings ─────────────────────────────────────────────────── */}
-          <View style={styles.card}>
+          <Card style={styles.cardGap}>
             <Text style={styles.cardHeading}>Settings</Text>
 
             <View style={styles.switchRow}>
@@ -420,8 +404,8 @@ export default function NewFormScreen() {
               <Switch
                 value={requireWallet}
                 onValueChange={setRequireWallet}
-                trackColor={{ false: C.border, true: C.primary }}
-                thumbColor="#E7EEF8"
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={colors.white}
               />
             </View>
 
@@ -435,17 +419,17 @@ export default function NewFormScreen() {
               <Switch
                 value={onePerWallet}
                 onValueChange={setOnePerWallet}
-                trackColor={{ false: C.border, true: C.primary }}
-                thumbColor="#E7EEF8"
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={colors.white}
               />
             </View>
-          </View>
+          </Card>
 
           {/* ── Fields ───────────────────────────────────────────────────── */}
-          <Text style={styles.sectionLabel}>Fields</Text>
+          <SectionLabel>Fields</SectionLabel>
 
           {fields.map((f, i) => (
-            <View key={f.id} style={styles.card}>
+            <Card key={f.id} style={styles.cardGap}>
               <View style={styles.fieldHeader}>
                 <Text style={styles.fieldIndex}>Field {i + 1}</Text>
                 <View style={styles.fieldControls}>
@@ -474,43 +458,31 @@ export default function NewFormScreen() {
                     onPress={() => removeField(f.id)}
                     disabled={fields.length === 1}
                   >
-                    <Text style={[styles.ctrlBtnText, { color: C.danger }]}>
+                    <Text style={[styles.ctrlBtnText, { color: colors.danger }]}>
                       Remove
                     </Text>
                   </Pressable>
                 </View>
               </View>
 
-              <Text style={styles.fieldLabel}>Label *</Text>
-              <TextInput
-                style={styles.input}
+              <Field
+                label="Label *"
                 value={f.label}
                 onChangeText={(v) => updateField(f.id, { label: v })}
                 placeholder="Question / field label"
-                placeholderTextColor={C.muted}
               />
 
               <Text style={styles.fieldLabel}>Type</Text>
               <View style={styles.chips}>
-                {FIELD_TYPES.map((t) => {
-                  const selected = f.type === t;
-                  return (
-                    <Pressable
-                      key={t}
-                      style={[styles.chip, selected && styles.chipSelected]}
-                      onPress={() => changeType(f, t)}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          selected && styles.chipTextSelected,
-                        ]}
-                      >
-                        {TYPE_LABEL[t]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                {FIELD_TYPES.map((t) => (
+                  <Chip
+                    key={t}
+                    label={TYPE_LABEL[t]}
+                    active={f.type === t}
+                    onPress={() => changeType(f, t)}
+                    tone="primary"
+                  />
+                ))}
               </View>
 
               {isOptionType(f.type) ? (
@@ -518,12 +490,11 @@ export default function NewFormScreen() {
                   <Text style={styles.fieldLabel}>Options</Text>
                   {f.options.map((o, oi) => (
                     <View key={o.id} style={styles.optionRow}>
-                      <TextInput
-                        style={[styles.input, styles.optionInput]}
+                      <Field
+                        style={styles.optionInput}
                         value={o.label}
                         onChangeText={(v) => updateOption(f.id, o.id, v)}
                         placeholder={`Option ${oi + 1}`}
-                        placeholderTextColor={C.muted}
                       />
                       <Pressable
                         style={[
@@ -533,36 +504,34 @@ export default function NewFormScreen() {
                         onPress={() => removeOption(f.id, o.id)}
                         disabled={f.options.length <= 2}
                       >
-                        <Text style={[styles.ctrlBtnText, { color: C.danger }]}>
+                        <Text
+                          style={[styles.ctrlBtnText, { color: colors.danger }]}
+                        >
                           ✕
                         </Text>
                       </Pressable>
                     </View>
                   ))}
-                  <Pressable
-                    style={styles.addOptionBtn}
+                  <OutlineButton
+                    label="+ Add option"
+                    tone="primary"
                     onPress={() => addOption(f.id)}
-                  >
-                    <Text style={styles.addOptionText}>+ Add option</Text>
-                  </Pressable>
+                  />
                 </View>
               ) : null}
 
               {f.type === 'rating' ? (
-                <View>
-                  <Text style={styles.fieldLabel}>Scale (2–10)</Text>
-                  <TextInput
-                    style={[styles.input, styles.scaleInput]}
-                    value={f.scale}
-                    onChangeText={(v) =>
-                      updateField(f.id, { scale: v.replace(/[^0-9]/g, '') })
-                    }
-                    placeholder="5"
-                    placeholderTextColor={C.muted}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                  />
-                </View>
+                <Field
+                  label="Scale (2–10)"
+                  style={styles.scaleInput}
+                  value={f.scale}
+                  onChangeText={(v) =>
+                    updateField(f.id, { scale: v.replace(/[^0-9]/g, '') })
+                  }
+                  placeholder="5"
+                  keyboardType="number-pad"
+                  maxLength={2}
+                />
               ) : null}
 
               <View style={styles.switchRow}>
@@ -570,8 +539,8 @@ export default function NewFormScreen() {
                 <Switch
                   value={f.required}
                   onValueChange={(v) => updateField(f.id, { required: v })}
-                  trackColor={{ false: C.border, true: C.primary }}
-                  thumbColor="#E7EEF8"
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
                 />
               </View>
               <View style={styles.switchRow}>
@@ -584,37 +553,24 @@ export default function NewFormScreen() {
                 <Switch
                   value={f.private}
                   onValueChange={(v) => updateField(f.id, { private: v })}
-                  trackColor={{ false: C.border, true: C.primary }}
-                  thumbColor="#E7EEF8"
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
                 />
               </View>
-            </View>
+            </Card>
           ))}
 
-          <Pressable style={styles.addFieldBtn} onPress={addField}>
-            <Text style={styles.addFieldText}>+ Add field</Text>
-          </Pressable>
+          <OutlineButton label="+ Add field" tone="primary" onPress={addField} />
 
-          {error ? (
-            <View style={[styles.banner, styles.bannerError]}>
-              <Text style={styles.bannerErrorText}>{error}</Text>
-            </View>
-          ) : null}
+          {error ? <Banner tone="danger">{error}</Banner> : null}
 
-          <Pressable
-            style={[styles.primaryBtn, (busy || !address) && styles.btnDisabled]}
+          <GradientButton
+            label="Create form · gasless"
             onPress={() => void onCreate()}
+            loading={busy}
+            loadingLabel={progress}
             disabled={busy || !address}
-          >
-            {busy ? (
-              <View style={styles.btnBusy}>
-                <ActivityIndicator color="#06291F" />
-                <Text style={styles.primaryBtnText}>{progress}</Text>
-              </View>
-            ) : (
-              <Text style={styles.primaryBtnText}>Create form · gasless</Text>
-            )}
-          </Pressable>
+          />
 
           <Text style={styles.footerNote}>
             No gas prompt, no wallet popup — your on-device key signs and the
@@ -622,68 +578,33 @@ export default function NewFormScreen() {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
-  scroll: { padding: 18, paddingBottom: 48, gap: 14 },
-  doneWrap: { padding: 18, gap: 14 },
+  scroll: { padding: space.lg, paddingBottom: 48, gap: space.md },
+  doneWrap: { padding: space.lg, gap: space.md },
+  cardGap: { gap: space.md },
 
-  screenTitle: { color: C.text, fontSize: 24, fontWeight: '800' },
-  screenSub: { color: C.muted, fontSize: 14, lineHeight: 20, marginTop: -6 },
+  screenTitle: { color: colors.text, fontSize: 24, fontWeight: '800' },
+  screenSub: { color: colors.muted, fontSize: 14, lineHeight: 20, marginTop: -6 },
 
-  sectionLabel: {
-    color: C.text,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    opacity: 0.8,
-    marginTop: 4,
-  },
+  cardHeading: { color: colors.text, fontSize: 16, fontWeight: '800' },
 
-  card: {
-    backgroundColor: C.surface,
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-    gap: 8,
-  },
-  cardHeading: { color: C.text, fontSize: 16, fontWeight: '800', marginBottom: 2 },
+  fieldLabel: { color: colors.text, fontSize: 14, fontWeight: '700' },
 
-  fieldLabel: {
-    color: C.muted,
-    fontSize: 12.5,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    marginTop: 4,
-  },
-  input: {
-    backgroundColor: C.surface2,
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    color: C.text,
-    fontSize: 15,
-  },
-  inputMultiline: { minHeight: 72, textAlignVertical: 'top' },
-  scaleInput: { width: 84 },
+  scaleInput: { width: 96 },
 
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    marginTop: 6,
   },
   switchText: { flex: 1 },
-  switchLabel: { color: C.text, fontSize: 15, fontWeight: '700' },
-  switchHelp: { color: C.muted, fontSize: 12.5, lineHeight: 17, marginTop: 2 },
+  switchLabel: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  switchHelp: { color: colors.muted, fontSize: 12.5, lineHeight: 17, marginTop: 2 },
 
   fieldHeader: {
     flexDirection: 'row',
@@ -691,107 +612,43 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   fieldIndex: {
-    color: C.accent,
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.4,
   },
   fieldControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ctrlBtn: {
-    borderColor: C.border,
+    borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.chip,
     paddingHorizontal: 10,
     paddingVertical: 6,
     minWidth: 34,
     alignItems: 'center',
+    backgroundColor: colors.surface,
   },
   ctrlBtnDisabled: { opacity: 0.4 },
-  ctrlBtnText: { color: C.text, fontSize: 13, fontWeight: '700' },
+  ctrlBtnText: { color: colors.text, fontSize: 13, fontWeight: '700' },
 
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
-  chip: {
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: C.surface2,
-  },
-  chipSelected: {
-    backgroundColor: 'rgba(45,212,191,0.14)',
-    borderColor: 'rgba(45,212,191,0.5)',
-  },
-  chipText: { color: C.muted, fontSize: 13, fontWeight: '700' },
-  chipTextSelected: { color: C.primary },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 
-  optionsBox: { gap: 8, marginTop: 4 },
+  optionsBox: { gap: 8 },
   optionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   optionInput: { flex: 1 },
-  addOptionBtn: {
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 9,
-    alignItems: 'center',
-  },
-  addOptionText: { color: C.accent, fontSize: 13.5, fontWeight: '700' },
-
-  addFieldBtn: {
-    borderColor: 'rgba(96,165,250,0.4)',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: 'center',
-    backgroundColor: 'rgba(96,165,250,0.1)',
-  },
-  addFieldText: { color: C.accent, fontSize: 14.5, fontWeight: '800' },
-
-  banner: { borderRadius: 12, padding: 12, borderWidth: 1 },
-  bannerWarn: {
-    backgroundColor: 'rgba(251,191,36,0.1)',
-    borderColor: 'rgba(251,191,36,0.4)',
-  },
-  bannerWarnText: { color: C.warn, fontSize: 13, lineHeight: 18 },
-  bannerError: {
-    backgroundColor: 'rgba(248,113,113,0.1)',
-    borderColor: 'rgba(248,113,113,0.45)',
-  },
-  bannerErrorText: { color: C.danger, fontSize: 13.5, lineHeight: 19 },
-
-  primaryBtn: {
-    backgroundColor: C.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  btnDisabled: { opacity: 0.5 },
-  btnBusy: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  primaryBtnText: { color: '#06291F', fontSize: 16, fontWeight: '800' },
-
-  secondaryBtn: {
-    borderColor: 'rgba(96,165,250,0.45)',
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: 'center',
-    backgroundColor: 'rgba(96,165,250,0.1)',
-  },
-  secondaryBtnText: { color: C.accent, fontSize: 15.5, fontWeight: '800' },
 
   ghostBtn: { alignItems: 'center', paddingVertical: 12 },
-  ghostBtnText: { color: C.muted, fontSize: 14, fontWeight: '600' },
+  ghostBtnText: { color: colors.muted, fontSize: 14, fontWeight: '600' },
 
   footerNote: {
-    color: C.muted,
+    color: colors.subtle,
     fontSize: 12,
     textAlign: 'center',
     marginTop: 4,
     lineHeight: 17,
   },
 
-  doneTitle: { color: C.text, fontSize: 22, fontWeight: '800' },
-  doneNote: { color: C.muted, fontSize: 14, lineHeight: 20 },
-  mono: { color: C.text, fontSize: 13, fontFamily: 'Courier', marginTop: 2 },
+  doneTitle: { color: colors.text, fontSize: 22, fontWeight: '800' },
+  doneNote: { color: colors.muted, fontSize: 14, lineHeight: 20 },
+  mono: { color: colors.text, fontSize: 13, fontFamily: mono },
 });

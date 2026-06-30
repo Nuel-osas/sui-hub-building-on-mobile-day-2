@@ -25,12 +25,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/lib';
 
+// Tidalform light theme (lib/theme.ts).
 const C = {
-  bg: '#0B1221',
-  surface: '#121C32',
-  text: '#E7EEF8',
-  primary: '#2DD4BF',
-  border: '#26324B',
+  bg: '#F8FAFC',
+  surface: '#FFFFFF',
+  text: '#10182D',
+  primary: '#0890BA',
+  border: '#D7DEEA',
 };
 
 /** Redirect based on auth state once the session has resolved. */
@@ -67,7 +68,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       {booting ? (
         <View style={styles.boot}>
           <ActivityIndicator color={C.primary} size="large" />

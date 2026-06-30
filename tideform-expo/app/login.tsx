@@ -14,38 +14,36 @@
  */
 
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { env, useAuth } from '@/lib';
+import {
+  Banner,
+  Card,
+  GradientButton,
+  Screen,
+  SectionLabel,
+} from '@/components/ui';
+import { colors, space } from '@/lib/theme';
 
-const C = {
-  bg: '#0B1221',
-  surface: '#121C32',
-  border: '#26324B',
-  text: '#E7EEF8',
-  muted: '#94A3B8',
-  primary: '#2DD4BF',
-  accent: '#60A5FA',
-  danger: '#F87171',
-  warn: '#FBBF24',
-};
-
-const SELLING_POINTS: { icon: string; title: string; body: string }[] = [
+const SELLING_POINTS: { icon: string; title: string; body: string; tint: string }[] = [
   {
     icon: '⚡',
     title: 'Gasless',
     body: 'A sponsor wallet pays every fee. You never hold or spend SUI.',
+    tint: colors.warning,
   },
   {
     icon: '🙅',
     title: 'Popup-less',
     body: 'No "approve in wallet" prompts. Your key signs right on the device.',
+    tint: colors.teal,
   },
   {
     icon: '🔑',
     title: 'Your key, your phone',
     body: 'A Sui wallet is created on-device and kept in the OS keystore. Non-custodial.',
+    tint: colors.indigo,
   },
 ];
 
@@ -54,8 +52,8 @@ export default function LoginScreen() {
   const busy = status === 'loading';
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar style="light" />
+    <Screen edges={['top', 'bottom']}>
+      <StatusBar style="dark" />
       <View style={styles.container}>
         <View style={styles.brandBlock}>
           <View style={styles.logo}>
@@ -69,40 +67,39 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.points}>
+          <SectionLabel>Why Tideform</SectionLabel>
           {SELLING_POINTS.map((p) => (
-            <View key={p.title} style={styles.point}>
-              <Text style={styles.pointIcon}>{p.icon}</Text>
+            <Card key={p.title} style={styles.point}>
+              <View style={[styles.pointIcon, { backgroundColor: p.tint + '14', borderColor: p.tint + '40' }]}>
+                <Text style={styles.pointIconText}>{p.icon}</Text>
+              </View>
               <View style={styles.pointTextBlock}>
                 <Text style={styles.pointTitle}>{p.title}</Text>
                 <Text style={styles.pointBody}>{p.body}</Text>
               </View>
-            </View>
+            </Card>
           ))}
         </View>
 
         <View style={styles.footer}>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Banner tone="danger">{error}</Banner> : null}
 
-          <Pressable
-            style={[styles.button, (!ready || busy) && styles.buttonDisabled]}
+          <GradientButton
+            label="Create my wallet"
+            loadingLabel="Creating…"
+            loading={busy}
+            disabled={!ready || busy}
             onPress={() => {
               void signIn();
             }}
-            disabled={!ready || busy}
-          >
-            {busy ? (
-              <ActivityIndicator color="#06291F" />
-            ) : (
-              <Text style={styles.buttonText}>Create my wallet</Text>
-            )}
-          </Pressable>
+          />
 
           <Text style={styles.legal}>
             On-device wallet · gas sponsored by {hostOf(env.backendBaseUrl)}
           </Text>
         </View>
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -111,59 +108,53 @@ function hostOf(url: string): string {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
   container: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.xl,
     justifyContent: 'space-between',
   },
-  brandBlock: { alignItems: 'center', gap: 12, marginTop: 24 },
+
+  brandBlock: { alignItems: 'center', gap: space.sm, marginTop: space.xl },
   logo: {
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: 'rgba(45,212,191,0.14)',
-    borderColor: 'rgba(45,212,191,0.4)',
+    backgroundColor: colors.primary + '14',
+    borderColor: colors.primary + '40',
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoMark: { color: C.primary, fontSize: 40, fontWeight: '900', marginTop: -4 },
-  title: { color: C.text, fontSize: 32, fontWeight: '800', letterSpacing: 0.3 },
+  logoMark: { color: colors.primary, fontSize: 40, fontWeight: '900', marginTop: -4 },
+  title: { color: colors.text, fontSize: 32, fontWeight: '800', letterSpacing: 0.3 },
   subtitle: {
-    color: C.muted,
+    color: colors.muted,
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 21,
     paddingHorizontal: 8,
   },
 
-  points: { gap: 14 },
+  points: { gap: space.md },
   point: {
     flexDirection: 'row',
-    gap: 14,
-    backgroundColor: C.surface,
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-  },
-  pointIcon: { fontSize: 24 },
-  pointTextBlock: { flex: 1, gap: 2 },
-  pointTitle: { color: C.text, fontSize: 16, fontWeight: '700' },
-  pointBody: { color: C.muted, fontSize: 13.5, lineHeight: 19 },
-
-  footer: { gap: 12 },
-  error: { color: C.danger, fontSize: 13.5, textAlign: 'center' },
-  warn: { color: C.warn, fontSize: 12.5, textAlign: 'center', lineHeight: 18 },
-  button: {
-    backgroundColor: C.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
+    gap: space.md,
     alignItems: 'center',
   },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#06291F', fontSize: 16, fontWeight: '800' },
-  legal: { color: C.muted, fontSize: 11.5, textAlign: 'center' },
+  pointIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pointIconText: { fontSize: 22 },
+  pointTextBlock: { flex: 1, gap: 2 },
+  pointTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  pointBody: { color: colors.muted, fontSize: 13.5, lineHeight: 19 },
+
+  footer: { gap: space.md },
+  legal: { color: colors.subtle, fontSize: 11.5, textAlign: 'center' },
 });

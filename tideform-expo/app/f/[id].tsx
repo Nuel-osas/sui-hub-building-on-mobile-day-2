@@ -19,13 +19,11 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   type Field,
@@ -44,18 +42,15 @@ import {
 } from '@/lib';
 import { FieldRenderer } from '@/components/field-renderer';
 import { Receipt } from '@/components/receipt';
-
-const C = {
-  bg: '#0B1221',
-  surface: '#121C32',
-  border: '#26324B',
-  text: '#E7EEF8',
-  muted: '#94A3B8',
-  primary: '#2DD4BF',
-  accent: '#60A5FA',
-  danger: '#F87171',
-  warn: '#FBBF24',
-};
+import {
+  Banner,
+  Card,
+  GradientButton,
+  OutlineButton,
+  Screen,
+  SectionLabel,
+} from '@/components/ui';
+import { colors, space } from '@/lib/theme';
 
 type Phase = 'loading' | 'ready' | 'submitting' | 'done' | 'error';
 
@@ -204,26 +199,28 @@ export default function FormScreen() {
   if (phase === 'loading') {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={C.primary} size="large" />
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
 
   if (phase === 'error') {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errTitle}>Couldn't load this form</Text>
-        <Text style={styles.errBody}>{loadError}</Text>
-        <Pressable style={styles.primaryBtn} onPress={() => void load()}>
-          <Text style={styles.primaryBtnText}>Retry</Text>
-        </Pressable>
-      </View>
+      <Screen edges={['bottom']}>
+        <View style={styles.center}>
+          <Card style={styles.errCard}>
+            <Text style={styles.errTitle}>Couldn't load this form</Text>
+            <Text style={styles.errBody}>{loadError}</Text>
+            <GradientButton label="Retry" onPress={() => void load()} />
+          </Card>
+        </View>
+      </Screen>
     );
   }
 
   if (phase === 'done' && receipt) {
     return (
-      <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Screen edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.doneWrap}>
           <Receipt
             txDigest={receipt.digest}
@@ -231,8 +228,8 @@ export default function FormScreen() {
             walCost={receipt.walCost}
             endEpoch={receipt.endEpoch}
           />
-          <Pressable
-            style={styles.primaryBtn}
+          <GradientButton
+            label="Submit another"
             onPress={() => {
               // Reset to a fresh blank form for another submission.
               const blank: Record<string, unknown> = {};
@@ -241,14 +238,10 @@ export default function FormScreen() {
               setReceipt(null);
               setPhase('ready');
             }}
-          >
-            <Text style={styles.primaryBtnText}>Submit another</Text>
-          </Pressable>
-          <Pressable style={styles.ghostBtn} onPress={() => router.back()}>
-            <Text style={styles.ghostBtnText}>Back to my forms</Text>
-          </Pressable>
+          />
+          <OutlineButton label="Back to my forms" onPress={() => router.back()} />
         </ScrollView>
-      </SafeAreaView>
+      </Screen>
     );
   }
 
@@ -257,7 +250,7 @@ export default function FormScreen() {
   const closed = form ? form.status !== 0 : false;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <Screen edges={['bottom']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -272,63 +265,60 @@ export default function FormScreen() {
           ) : null}
 
           {closed ? (
-            <View style={[styles.banner, styles.bannerWarn]}>
-              <Text style={styles.bannerWarnText}>
+            <View style={styles.bannerWrap}>
+              <Banner tone="warning">
                 This form is {form?.status === 1 ? 'closed' : 'archived'} — new
                 submissions are disabled.
-              </Text>
+              </Banner>
             </View>
           ) : null}
 
           {hasPrivate ? (
-            <View style={[styles.banner, styles.bannerInfo]}>
-              <Text style={styles.bannerInfoText}>
+            <View style={styles.bannerWrap}>
+              <Banner tone="info">
                 🔒 Private fields use Seal on this device:{' '}
                 {isSealAvailable()
                   ? 'encryption is active.'
                   : 'no WebCrypto here, so they are stored as a labeled placeholder (not encrypted).'}
-              </Text>
+              </Banner>
             </View>
           ) : null}
 
-          {schema?.sections.map((section) => (
-            <View key={section.id} style={styles.section}>
-              {section.title ? (
-                <Text style={styles.sectionTitle}>{section.title}</Text>
-              ) : null}
-              {section.fields.map((field) => (
-                <FieldRenderer
-                  key={field.id}
-                  field={field}
-                  value={values[field.id]}
-                  onChange={(v) => setValue(field.id, v)}
-                  error={errors[field.id]}
-                />
-              ))}
-            </View>
-          ))}
+          <Card style={styles.formCard}>
+            {schema?.sections.map((section, idx) => (
+              <View
+                key={section.id}
+                style={idx > 0 ? styles.sectionGap : undefined}
+              >
+                {section.title ? (
+                  <View style={styles.sectionHeading}>
+                    <SectionLabel>{section.title}</SectionLabel>
+                  </View>
+                ) : null}
+                {section.fields.map((field) => (
+                  <FieldRenderer
+                    key={field.id}
+                    field={field}
+                    value={values[field.id]}
+                    onChange={(v) => setValue(field.id, v)}
+                    error={errors[field.id]}
+                  />
+                ))}
+              </View>
+            ))}
+          </Card>
 
           {submitError ? (
             <Text style={styles.submitError}>{submitError}</Text>
           ) : null}
 
-          <Pressable
-            style={[
-              styles.primaryBtn,
-              (submitting || closed) && styles.btnDisabled,
-            ]}
+          <GradientButton
+            label="Submit · gasless"
             onPress={() => void onSubmit()}
-            disabled={submitting || closed}
-          >
-            {submitting ? (
-              <View style={styles.btnBusy}>
-                <ActivityIndicator color="#06291F" />
-                <Text style={styles.primaryBtnText}>{progress}</Text>
-              </View>
-            ) : (
-              <Text style={styles.primaryBtnText}>Submit · gasless</Text>
-            )}
-          </Pressable>
+            loading={submitting}
+            loadingLabel={progress}
+            disabled={closed}
+          />
 
           <Text style={styles.footerNote}>
             No gas prompt, no wallet popup — your on-device key signs and the
@@ -336,7 +326,7 @@ export default function FormScreen() {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -373,67 +363,41 @@ function stringify(v: unknown): string {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
   center: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    padding: 24,
+    gap: space.md,
+    padding: space.xl,
   },
-  scroll: { padding: 18, paddingBottom: 48 },
-  doneWrap: { padding: 18, gap: 14 },
+  scroll: { padding: space.lg, paddingBottom: 48, gap: space.md },
+  doneWrap: { padding: space.lg, gap: space.md },
 
-  title: { color: C.text, fontSize: 24, fontWeight: '800', marginBottom: 6 },
-  description: { color: C.muted, fontSize: 14.5, lineHeight: 21, marginBottom: 14 },
-
-  banner: { borderRadius: 12, padding: 12, borderWidth: 1, marginBottom: 14 },
-  bannerWarn: {
-    backgroundColor: 'rgba(251,191,36,0.1)',
-    borderColor: 'rgba(251,191,36,0.4)',
-  },
-  bannerWarnText: { color: C.warn, fontSize: 13, lineHeight: 18 },
-  bannerInfo: {
-    backgroundColor: 'rgba(96,165,250,0.1)',
-    borderColor: 'rgba(96,165,250,0.35)',
-  },
-  bannerInfoText: { color: C.accent, fontSize: 12.5, lineHeight: 18 },
-
-  section: { marginBottom: 8 },
-  sectionTitle: {
-    color: C.text,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginBottom: 12,
-    opacity: 0.8,
+  title: { color: colors.text, fontSize: 24, fontWeight: '800', marginBottom: 2 },
+  description: {
+    color: colors.muted,
+    fontSize: 14.5,
+    lineHeight: 21,
   },
 
-  submitError: { color: C.danger, fontSize: 13.5, marginBottom: 12 },
+  bannerWrap: { marginTop: 2 },
 
-  primaryBtn: {
-    backgroundColor: C.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  btnDisabled: { opacity: 0.5 },
-  btnBusy: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  primaryBtnText: { color: '#06291F', fontSize: 16, fontWeight: '800' },
-  ghostBtn: { alignItems: 'center', paddingVertical: 12 },
-  ghostBtnText: { color: C.muted, fontSize: 14, fontWeight: '600' },
+  formCard: { gap: space.sm, marginTop: 2 },
+  sectionGap: { marginTop: space.lg },
+  sectionHeading: { marginBottom: space.sm },
+
+  submitError: { color: colors.danger, fontSize: 13.5, fontWeight: '600' },
 
   footerNote: {
-    color: C.muted,
+    color: colors.subtle,
     fontSize: 12,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: 2,
     lineHeight: 17,
   },
 
-  errTitle: { color: C.text, fontSize: 17, fontWeight: '700' },
-  errBody: { color: C.muted, fontSize: 14, textAlign: 'center' },
+  errCard: { gap: space.md, alignSelf: 'stretch' },
+  errTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  errBody: { color: colors.muted, fontSize: 14, lineHeight: 20 },
 });

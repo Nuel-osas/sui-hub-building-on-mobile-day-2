@@ -32,7 +32,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   type Field,
@@ -56,24 +55,23 @@ import {
   useAuth,
 } from '@/lib';
 import { FieldRenderer } from '@/components/field-renderer';
-
-const C = {
-  bg: '#0B1221',
-  surface: '#121C32',
-  surface2: '#0F1830',
-  border: '#26324B',
-  text: '#E7EEF8',
-  muted: '#94A3B8',
-  primary: '#2DD4BF',
-  accent: '#60A5FA',
-  danger: '#F87171',
-  warn: '#FBBF24',
-  ok: '#34D399',
-};
+import { colors, mono, radius, shortAddr } from '@/lib/theme';
+import {
+  Banner,
+  Card,
+  GradientButton,
+  Pill,
+  Screen,
+  SectionLabel,
+} from '@/components/ui';
 
 const SUB_STATUS = ['NEW', 'IN PROGRESS', 'RESOLVED', 'SPAM'];
 const PRIORITY = ['LOW', 'MED', 'HIGH', 'URGENT'];
-const PRIORITY_COLOR = [C.muted, C.accent, C.warn, C.danger];
+const PRIORITY_COLOR = [colors.subtle, colors.primary, colors.warning, colors.danger];
+
+type PillTone = 'muted' | 'primary' | 'success' | 'warning' | 'danger' | 'teal';
+const STATUS_TONE: PillTone[] = ['primary', 'warning', 'success', 'danger'];
+const PRIORITY_TONE: PillTone[] = ['muted', 'primary', 'warning', 'danger'];
 
 interface InboxItem {
   obj: SubmissionObject;
@@ -243,20 +241,20 @@ export default function InboxScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={C.primary} size="large" />
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <Screen edges={['bottom']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => void load('refresh')}
-            tintColor={C.primary}
+            tintColor={colors.primary}
           />
         }
       >
@@ -267,37 +265,22 @@ export default function InboxScreen() {
         </Text>
 
         {!isAdmin ? (
-          <View style={[styles.banner, styles.bannerWarn]}>
-            <Text style={styles.bannerWarnText}>
-              You are not an admin of this form. Public fields are visible, but
-              private (Seal) fields can only be decrypted by the form's admins.
-            </Text>
-          </View>
+          <Banner tone="warning">
+            You are not an admin of this form. Public fields are visible, but
+            private (Seal) fields can only be decrypted by the form's admins.
+          </Banner>
         ) : null}
 
-        {error ? (
-          <View style={[styles.banner, styles.bannerErr]}>
-            <Text style={styles.bannerErrText}>{error}</Text>
-          </View>
-        ) : null}
+        {error ? <Banner tone="danger">{error}</Banner> : null}
 
         {hasSealCiphertext && isAdmin ? (
-          <Pressable
-            style={[styles.decryptBtn, decrypting && styles.btnDisabled]}
+          <GradientButton
+            label={`🔓 Decrypt private fields ${isSealAvailable() ? '' : '(unavailable)'}`}
             onPress={() => void decryptAll()}
+            loading={decrypting}
+            loadingLabel="Decrypting…"
             disabled={decrypting}
-          >
-            {decrypting ? (
-              <View style={styles.btnBusy}>
-                <ActivityIndicator color="#06291F" />
-                <Text style={styles.decryptText}>Decrypting…</Text>
-              </View>
-            ) : (
-              <Text style={styles.decryptText}>
-                🔓 Decrypt private fields {isSealAvailable() ? '' : '(unavailable)'}
-              </Text>
-            )}
-          </Pressable>
+          />
         ) : null}
 
         {items.length === 0 ? (
@@ -322,7 +305,7 @@ export default function InboxScreen() {
           ))
         )}
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -347,7 +330,7 @@ function SubmissionCard({
 }) {
   const { obj, payload, payloadError } = item;
   return (
-    <View style={styles.card}>
+    <Card>
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardWhen}>
@@ -358,35 +341,21 @@ function SubmissionCard({
           </Text>
         </View>
         <View style={styles.pills}>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusText}>
-              {SUB_STATUS[obj.status] ?? `?${obj.status}`}
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.prioPill,
-              { borderColor: PRIORITY_COLOR[obj.priority] ?? C.muted },
-            ]}
-          >
-            <Text
-              style={[
-                styles.prioText,
-                { color: PRIORITY_COLOR[obj.priority] ?? C.muted },
-              ]}
-            >
-              {PRIORITY[obj.priority] ?? '?'}
-            </Text>
-          </View>
+          <Pill
+            label={SUB_STATUS[obj.status] ?? `?${obj.status}`}
+            tone={STATUS_TONE[obj.status] ?? 'muted'}
+          />
+          <Pill
+            label={PRIORITY[obj.priority] ?? '?'}
+            tone={PRIORITY_TONE[obj.priority] ?? 'muted'}
+          />
         </View>
       </View>
 
       {obj.tags.length > 0 ? (
         <View style={styles.tagRow}>
           {obj.tags.map((t) => (
-            <View key={t} style={styles.tag}>
-              <Text style={styles.tagText}>#{t}</Text>
-            </View>
+            <Pill key={t} label={`#${t}`} tone="teal" />
           ))}
         </View>
       ) : null}
@@ -419,7 +388,7 @@ function SubmissionCard({
       ) : (
         <Text style={styles.fieldError}>Empty payload.</Text>
       )}
-    </View>
+    </Card>
   );
 }
 
@@ -482,7 +451,7 @@ function AdminActions({
 
   return (
     <View style={styles.adminBar}>
-      <Text style={styles.adminLabel}>Status</Text>
+      <SectionLabel>Status</SectionLabel>
       <View style={styles.adminRow}>
         {SUB_STATUS.map((label, i) => {
           const active = obj.status === i;
@@ -510,7 +479,7 @@ function AdminActions({
               ]}
             >
               {busy === key ? (
-                <ActivityIndicator size="small" color={C.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <Text
                   style={[
@@ -526,11 +495,11 @@ function AdminActions({
         })}
       </View>
 
-      <Text style={styles.adminLabel}>Priority</Text>
+      <SectionLabel>Priority</SectionLabel>
       <View style={styles.adminRow}>
         {PRIORITY.map((label, i) => {
           const active = obj.priority === i;
-          const color = PRIORITY_COLOR[i] ?? C.muted;
+          const color = PRIORITY_COLOR[i] ?? colors.subtle;
           const key = `prio-${i}`;
           return (
             <Pressable
@@ -550,7 +519,7 @@ function AdminActions({
               }
               style={[
                 styles.adminPill,
-                active && { borderColor: color, backgroundColor: C.surface2 },
+                active && { borderColor: color, backgroundColor: colors.surfaceLift },
                 disabled && !active && styles.adminPillFaded,
               ]}
             >
@@ -571,13 +540,13 @@ function AdminActions({
         })}
       </View>
 
-      <Text style={styles.adminLabel}>Add tag</Text>
+      <SectionLabel>Add tag</SectionLabel>
       <View style={styles.tagAddRow}>
         <TextInput
           value={tagText}
           onChangeText={setTagText}
           placeholder="e.g. follow-up"
-          placeholderTextColor={C.muted}
+          placeholderTextColor={colors.subtle}
           autoCapitalize="none"
           autoCorrect={false}
           editable={!disabled}
@@ -593,7 +562,7 @@ function AdminActions({
           ]}
         >
           {busy === 'tag' ? (
-            <ActivityIndicator size="small" color="#06291F" />
+            <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <Text style={styles.tagAddBtnText}>Add</Text>
           )}
@@ -660,11 +629,10 @@ function SubmittedField({
     return (
       <View style={styles.privateField}>
         <Text style={styles.fieldLabel}>{label}</Text>
-        <View style={styles.placeholderTag}>
-          <Text style={styles.placeholderTagText}>
-            ⚠ PLACEHOLDER — not encrypted (submitter had no WebCrypto)
-          </Text>
-        </View>
+        <Pill
+          tone="warning"
+          label="⚠ PLACEHOLDER — not encrypted (submitter had no WebCrypto)"
+        />
         <Text style={styles.fieldBody}>{decoded}</Text>
       </View>
     );
@@ -675,9 +643,7 @@ function SubmittedField({
     return (
       <View style={styles.privateField}>
         <Text style={styles.fieldLabel}>{label}</Text>
-        <View style={styles.unlockedTag}>
-          <Text style={styles.unlockedTagText}>🔓 decrypted (Seal)</Text>
-        </View>
+        <Pill tone="success" label="🔓 decrypted (Seal)" />
         <Text style={styles.fieldBody}>{decrypted.text}</Text>
       </View>
     );
@@ -686,12 +652,12 @@ function SubmittedField({
   return (
     <View style={styles.privateField}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={styles.sealedTag}>
-        <Text style={styles.sealedTagText}>
-          🔒 Seal-encrypted
-          {decrypted?.error ? ` · ${decrypted.error}` : ' · tap “Decrypt” above'}
-        </Text>
-      </View>
+      <Pill
+        tone="primary"
+        label={`🔒 Seal-encrypted${
+          decrypted?.error ? ` · ${decrypted.error}` : ' · tap “Decrypt” above'
+        }`}
+      />
     </View>
   );
 }
@@ -714,183 +680,86 @@ function FallbackField({
   );
 }
 
-function shortAddr(a: string): string {
-  return a.length > 14 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a;
-}
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg },
   center: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scroll: { padding: 16, paddingBottom: 40, gap: 12 },
 
-  title: { color: C.text, fontSize: 24, fontWeight: '800' },
-  subtitle: { color: C.muted, fontSize: 13.5, marginTop: -4 },
-
-  banner: { borderRadius: 12, padding: 12, borderWidth: 1 },
-  bannerWarn: {
-    backgroundColor: 'rgba(251,191,36,0.1)',
-    borderColor: 'rgba(251,191,36,0.4)',
-  },
-  bannerWarnText: { color: C.warn, fontSize: 12.5, lineHeight: 18 },
-  bannerErr: {
-    backgroundColor: 'rgba(248,113,113,0.1)',
-    borderColor: 'rgba(248,113,113,0.4)',
-  },
-  bannerErrText: { color: C.danger, fontSize: 12.5, lineHeight: 18 },
-
-  decryptBtn: {
-    backgroundColor: C.primary,
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  btnDisabled: { opacity: 0.5 },
-  btnBusy: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  decryptText: { color: '#06291F', fontSize: 14.5, fontWeight: '800' },
+  title: { color: colors.text, fontSize: 24, fontWeight: '800' },
+  subtitle: { color: colors.muted, fontSize: 13.5, marginTop: -4 },
 
   empty: { alignItems: 'center', gap: 8, paddingTop: 48 },
-  emptyTitle: { color: C.text, fontSize: 16, fontWeight: '700' },
-  emptyBody: { color: C.muted, fontSize: 13.5, textAlign: 'center' },
+  emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  emptyBody: { color: colors.muted, fontSize: 13.5, textAlign: 'center' },
 
-  card: {
-    backgroundColor: C.surface,
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-  },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  cardWhen: { color: C.text, fontSize: 14, fontWeight: '700' },
-  cardWho: { color: C.muted, fontSize: 12, fontFamily: 'Courier' },
+  cardWhen: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  cardWho: { color: colors.muted, fontSize: 12, fontFamily: mono },
   pills: { flexDirection: 'row', gap: 6 },
-  statusPill: {
-    backgroundColor: C.surface2,
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  statusText: { color: C.muted, fontSize: 10.5, fontWeight: '800' },
-  prioPill: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  prioText: { fontSize: 10.5, fontWeight: '800' },
 
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
-  tag: {
-    backgroundColor: C.surface2,
-    borderColor: C.border,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  tagText: { color: C.accent, fontSize: 11.5 },
 
   adminBar: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: C.border,
+    borderTopColor: colors.border,
     gap: 6,
-  },
-  adminLabel: {
-    color: C.muted,
-    fontSize: 10.5,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginTop: 4,
   },
   adminRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   adminPill: {
-    backgroundColor: C.surface2,
-    borderColor: C.border,
+    backgroundColor: colors.surfaceLift,
+    borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: 999,
+    borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 5,
     minHeight: 28,
     justifyContent: 'center',
   },
-  adminPillActive: { borderColor: C.primary, backgroundColor: C.surface2 },
+  adminPillActive: { borderColor: colors.primary, backgroundColor: colors.surfaceLift },
   adminPillFaded: { opacity: 0.5 },
-  adminPillText: { color: C.muted, fontSize: 11, fontWeight: '700' },
-  adminPillTextActive: { color: C.primary, fontWeight: '800' },
+  adminPillText: { color: colors.muted, fontSize: 11, fontWeight: '700' },
+  adminPillTextActive: { color: colors.primary, fontWeight: '800' },
 
   tagAddRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   tagInput: {
     flex: 1,
-    backgroundColor: C.surface2,
-    borderColor: C.border,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.input,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    color: C.text,
+    paddingVertical: 10,
+    color: colors.text,
     fontSize: 13.5,
   },
   tagAddBtn: {
-    backgroundColor: C.primary,
-    borderRadius: 10,
+    backgroundColor: colors.primary,
+    borderRadius: radius.input,
     paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingVertical: 11,
     minWidth: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tagAddBtnText: { color: '#06291F', fontSize: 13.5, fontWeight: '800' },
-  adminError: { color: C.danger, fontSize: 12, marginTop: 2 },
+  btnDisabled: { opacity: 0.5 },
+  tagAddBtnText: { color: colors.white, fontSize: 13.5, fontWeight: '800' },
+  adminError: { color: colors.danger, fontSize: 12, marginTop: 2 },
 
   divider: {
     height: 1,
-    backgroundColor: C.border,
+    backgroundColor: colors.border,
     marginVertical: 14,
   },
 
   privateField: { marginBottom: 16, gap: 4 },
-  fieldLabel: { color: C.text, fontSize: 14, fontWeight: '700' },
-  fieldBody: { color: C.text, fontSize: 15 },
-  fieldSub: { color: C.muted, fontSize: 12 },
-  fieldError: { color: C.danger, fontSize: 13 },
-
-  placeholderTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(251,191,36,0.12)',
-    borderColor: 'rgba(251,191,36,0.45)',
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  placeholderTagText: { color: C.warn, fontSize: 11, fontWeight: '700' },
-  sealedTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(96,165,250,0.12)',
-    borderColor: 'rgba(96,165,250,0.4)',
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  sealedTagText: { color: C.accent, fontSize: 11.5, fontWeight: '700' },
-  unlockedTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(52,211,153,0.12)',
-    borderColor: 'rgba(52,211,153,0.45)',
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  unlockedTagText: { color: C.ok, fontSize: 11, fontWeight: '700' },
+  fieldLabel: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  fieldBody: { color: colors.text, fontSize: 15 },
+  fieldSub: { color: colors.muted, fontSize: 12 },
+  fieldError: { color: colors.danger, fontSize: 13 },
 });
