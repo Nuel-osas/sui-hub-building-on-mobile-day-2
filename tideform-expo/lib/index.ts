@@ -66,7 +66,7 @@ export type {
   AttachNotesArgs,
 } from './move';
 
-// Zentos client (auth + sign)
+// Zentos client (custodial auth + sign — the "with a dev build" alternative)
 export {
   ZentosClient,
   zentos,
@@ -81,6 +81,17 @@ export type {
   SignResult,
   SignMessageResult,
 } from './api';
+
+// Local device wallet (the Expo-Go path: non-custodial key + sponsored gas)
+export {
+  getOrCreateKeypair,
+  loadKeypair,
+  getStoredAddress,
+  resetWallet,
+  exportSecretKey,
+} from './wallet';
+export { signAndExecuteLocal } from './local-signer';
+export type { LocalSignResult } from './local-signer';
 
 // Auth hook / store
 export {

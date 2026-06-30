@@ -1,31 +1,24 @@
 /**
- * lib/auth.ts — native Google sign-in + a tiny auth store/hook.
+ * lib/auth.ts — auth store/hook backed by a LOCAL device wallet.
  *
- * Flow A (source-of-truth §9): native Google sign-in (expo-auth-session) yields a
- * Google ID-token JWT → POST /api/auth/google (lib/api.ts) → the Set-Cookie
- * session is captured (lib/cookies.ts) → we hold { address, email, name, picture }.
- * On launch, `restore()` calls GET /api/auth/me to rehydrate the session.
+ * There is no wallet extension on a phone, and Google OAuth can't complete in
+ * Expo Go (custom-scheme redirects aren't allowed on a Web client, and Expo
+ * removed the device proxy). So the Expo-Go on-ramp is a non-custodial device
+ * wallet: a Sui keypair generated + stored on-device (lib/wallet.ts). Gas stays
+ * sponsored via /api/sui/sponsor (lib/local-signer.ts), so it's still gasless.
  *
- * There is NO wallet extension on mobile — that's the whole reason for the
- * custodial backend model. This hook is the only place the UI touches sign-in.
+ * The custodial-Google path still ships in lib/api.ts (ZentosClient) for the
+ * "with a dev build" alternative; this hook is the one the screens use.
+ *
+ * The `useAuth` interface is intentionally unchanged from the custodial version
+ * so the router guard and screens didn't have to change:
+ *   { user, status, isAuthenticated, ready, signIn, signOut, restore }
  */
 
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
-import {
-  type AuthUser,
-  getMe,
-  signInWithGoogle,
-  signOut as zentosSignOut,
-} from './api';
-import { env } from './env';
-
-// Required so the auth redirect can dismiss the in-app browser and return.
-WebBrowser.maybeCompleteAuthSession();
-
-// ── External auth store (framework-light, survives re-renders) ────────────────
+import type { AuthUser } from './api';
+import { getOrCreateKeypair, getStoredAddress, resetWallet } from './wallet';
 
 export type AuthStatus =
   | 'idle'
@@ -64,107 +57,78 @@ export function getAuthState(): AuthState {
   return state;
 }
 
-// ── Store actions ─────────────────────────────────────────────────────────────
-
-async function completeGoogleSignIn(idToken: string): Promise<void> {
-  setState({ status: 'loading', error: undefined });
-  try {
-    const user = await signInWithGoogle(idToken);
-    setState({ user, status: 'authenticated' });
-  } catch (e) {
-    setState({ status: 'unauthenticated', error: errorMessage(e) });
-  }
-}
-
-/** Restore a persisted session via the cookie + GET /api/auth/me. */
-export async function restoreSession(): Promise<void> {
-  setState({ status: 'restoring', error: undefined });
-  try {
-    const user = await getMe();
-    setState({ user, status: user ? 'authenticated' : 'unauthenticated' });
-  } catch (e) {
-    setState({ status: 'unauthenticated', error: errorMessage(e) });
-  }
-}
-
-/** Clear the server session + local cookie + store. */
-export async function signOutCurrent(): Promise<void> {
-  try {
-    await zentosSignOut();
-  } finally {
-    setState({ user: null, status: 'unauthenticated', error: undefined });
-  }
+function userFor(address: string): AuthUser {
+  // AuthUser shape is shared with the custodial path; a device wallet has no
+  // email/name, so we present a friendly label.
+  return { address, email: '', name: 'Device wallet' };
 }
 
 function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+// ── Store actions ─────────────────────────────────────────────────────────────
+
+/** Rehydrate on launch: authenticated iff a device wallet already exists. */
+export async function restoreSession(): Promise<void> {
+  setState({ status: 'restoring', error: undefined });
+  try {
+    const address = await getStoredAddress();
+    if (address) {
+      setState({ user: userFor(address), status: 'authenticated' });
+    } else {
+      setState({ user: null, status: 'unauthenticated' });
+    }
+  } catch (e) {
+    setState({ status: 'unauthenticated', error: errorMessage(e) });
+  }
+}
+
+/** Create the device wallet (or enter the existing one) and authenticate. */
+async function enterWallet(): Promise<void> {
+  setState({ status: 'loading', error: undefined });
+  try {
+    const kp = await getOrCreateKeypair();
+    setState({ user: userFor(kp.toSuiAddress()), status: 'authenticated' });
+  } catch (e) {
+    setState({ status: 'unauthenticated', error: errorMessage(e) });
+  }
+}
+
+/** Forget the device wallet (a fresh one is minted next time). */
+export async function signOutCurrent(): Promise<void> {
+  try {
+    await resetWallet();
+  } finally {
+    setState({ user: null, status: 'unauthenticated', error: undefined });
+  }
+}
+
 // ── The hook the UI uses ──────────────────────────────────────────────────────
 
 export interface UseAuth extends AuthState {
   isAuthenticated: boolean;
-  /** True once the Google auth request has been prepared (config loaded). */
+  /** Always true for the device wallet (no external config to load). */
   ready: boolean;
-  /** Launch native Google sign-in. Resolves the session via the backend. */
+  /** Create / enter the on-device wallet. */
   signIn: () => Promise<void>;
-  /** Sign out (clears backend session + local cookie). */
+  /** Forget the device wallet. */
   signOut: () => Promise<void>;
-  /** Re-hydrate a persisted session (call once on app launch). */
+  /** Re-hydrate on launch (call once). */
   restore: () => Promise<void>;
 }
 
 export function useAuth(): UseAuth {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  // `useIdTokenAuthRequest` is the Google provider helper that returns an
-  // OpenID id_token (responseType id_token + openid/email scopes) — exactly the
-  // JWT POST /api/auth/google expects.
-  // VERIFY: on some expo-auth-session versions this is spelled
-  // `Google.useAuthRequest({ ..., responseType: 'id_token' })`; the id_token then
-  // lands in `response.params.id_token` either way.
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: env.googleClientId,
-  });
-
-  useEffect(() => {
-    if (!response) return;
-    if (response.type === 'success') {
-      const idToken =
-        (response.params as Record<string, string> | undefined)?.id_token ??
-        response.authentication?.idToken;
-      if (idToken) {
-        void completeGoogleSignIn(idToken);
-      } else {
-        setState({
-          status: 'unauthenticated',
-          error: 'Google response did not include an id_token.',
-        });
-      }
-    } else if (response.type === 'error') {
-      setState({
-        status: 'unauthenticated',
-        error: response.error?.message ?? 'Google sign-in failed.',
-      });
-    } else if (response.type === 'dismiss' || response.type === 'cancel') {
-      // User backed out — return to a clean unauthenticated state.
-      if (state.status === 'loading') setState({ status: 'unauthenticated' });
-    }
-  }, [response]);
-
-  const signIn = useCallback(async () => {
-    if (!request) return;
-    setState({ status: 'loading', error: undefined });
-    await promptAsync();
-  }, [request, promptAsync]);
-
+  const signIn = useCallback(() => enterWallet(), []);
   const signOut = useCallback(() => signOutCurrent(), []);
   const restore = useCallback(() => restoreSession(), []);
 
   return {
     ...snapshot,
-    isAuthenticated: snapshot.status === 'authenticated',
-    ready: !!request,
+    isAuthenticated: snapshot.status === 'authenticated' && !!snapshot.user,
+    ready: true,
     signIn,
     signOut,
     restore,

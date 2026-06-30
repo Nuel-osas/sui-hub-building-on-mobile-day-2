@@ -40,19 +40,18 @@ const SELLING_POINTS: { icon: string; title: string; body: string }[] = [
   {
     icon: '🙅',
     title: 'Popup-less',
-    body: 'No "approve in wallet" prompts. The backend co-signs custodially.',
+    body: 'No "approve in wallet" prompts. Your key signs right on the device.',
   },
   {
     icon: '🔑',
-    title: 'No seed phrase',
-    body: 'Sign in with Google. Same account → same Sui address, forever.',
+    title: 'Your key, your phone',
+    body: 'A Sui wallet is created on-device and kept in the OS keystore. Non-custodial.',
   },
 ];
 
 export default function LoginScreen() {
   const { signIn, ready, status, error } = useAuth();
   const busy = status === 'loading';
-  const needsClientId = !env.googleClientId;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -84,13 +83,6 @@ export default function LoginScreen() {
         <View style={styles.footer}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          {needsClientId ? (
-            <Text style={styles.warn}>
-              Set EXPO_PUBLIC_GOOGLE_CLIENT_ID in your .env to enable Google
-              sign-in (see README).
-            </Text>
-          ) : null}
-
           <Pressable
             style={[styles.button, (!ready || busy) && styles.buttonDisabled]}
             onPress={() => {
@@ -101,12 +93,12 @@ export default function LoginScreen() {
             {busy ? (
               <ActivityIndicator color="#06291F" />
             ) : (
-              <Text style={styles.buttonText}>Continue with Google</Text>
+              <Text style={styles.buttonText}>Create my wallet</Text>
             )}
           </Pressable>
 
           <Text style={styles.legal}>
-            Custodial wallet by Zentos · {hostOf(env.backendBaseUrl)}
+            On-device wallet · gas sponsored by {hostOf(env.backendBaseUrl)}
           </Text>
         </View>
       </View>

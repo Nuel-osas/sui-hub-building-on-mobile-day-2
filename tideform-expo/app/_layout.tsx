@@ -14,6 +14,9 @@
  * guard just reads `status`/`isAuthenticated` and redirects.
  */
 
+// Polyfill crypto.getRandomValues for on-device Ed25519 key generation (lib/wallet.ts).
+import 'react-native-get-random-values';
+
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';

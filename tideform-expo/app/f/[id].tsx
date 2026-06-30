@@ -37,7 +37,7 @@ import {
   fetchFormSchema,
   isSealAvailable,
   sealEncryptText,
-  signAndExecuteCustodial,
+  signAndExecuteLocal,
   txSubmit,
   uploadJson,
   useAuth,
@@ -178,10 +178,11 @@ export default function FormScreen() {
       const upload = await uploadJson(submission, { owner: user.address });
       if (!upload.blobId) throw new Error('Walrus upload returned no blob_id.');
 
-      // 3. Build submission::submit PTB and have the backend sign + sponsor it.
+      // 3. Build submission::submit PTB. The on-device key signs as sender; the
+      //    backend sponsor pays gas + co-signs. Gasless, non-custodial.
       setProgress('Submitting on-chain (gasless)…');
       const tx = txSubmit({ formId, blobId: upload.blobId });
-      const res = await signAndExecuteCustodial(tx, user.address);
+      const res = await signAndExecuteLocal(tx);
 
       setReceipt({
         digest: res.digest,
@@ -330,8 +331,8 @@ export default function FormScreen() {
           </Pressable>
 
           <Text style={styles.footerNote}>
-            On submit there is no gas prompt and no wallet popup — the Zentos
-            backend sponsors and co-signs the transaction.
+            No gas prompt, no wallet popup — your on-device key signs and the
+            sponsor wallet pays the gas.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
