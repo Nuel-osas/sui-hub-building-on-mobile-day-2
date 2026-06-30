@@ -63,17 +63,22 @@ popup, and no extension installed.** That's the custodial + sponsored model doin
 ### Expo (iOS + Android)
 ```bash
 cd tideform-expo
-cp .env.example .env        # mainnet defaults are filled in; add your Google client ID
+cp .env.example .env        # mainnet IDs + the tidalform Google client ID are already filled in
 npm install
 npm start                   # scan the QR with Expo Go, or run on a simulator
 ```
+> Google sign-in is pre-wired to tidalform's **Web** OAuth client
+> (`626577489375-…apps.googleusercontent.com`) — a public value the live backend already
+> trusts, so it works in Expo Go with no extra setup.
 See [`tideform-expo/README.md`](tideform-expo/README.md) and
 [`tideform-expo/WALKTHROUGH.md`](tideform-expo/WALKTHROUGH.md).
 
 ### Swift (iOS)
 Open the project in Xcode, add **SuiKit** and **GoogleSignIn-iOS** via Swift Package Manager,
-copy `Config.xcconfig.example` → `Config.xcconfig`, set your Google client ID, and run on a
-device or simulator. See [`tideform-swift/README.md`](tideform-swift/README.md) and
+copy `Config.xcconfig.example` → `Config.xcconfig`, and run on a device or simulator. The
+`GOOGLE_SERVER_CLIENT_ID` is pre-filled with tidalform's web client; you only need to create an
+**iOS** OAuth client in the same Google Cloud project (project number `626577489375`) and paste
+it as `GOOGLE_IOS_CLIENT_ID`. See [`tideform-swift/README.md`](tideform-swift/README.md) and
 [`tideform-swift/WALKTHROUGH.md`](tideform-swift/WALKTHROUGH.md).
 
 > **Backend:** both apps default `BACKEND_BASE_URL` to the live `https://tidalform.xyz`, so reads

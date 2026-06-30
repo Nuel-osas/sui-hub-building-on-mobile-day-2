@@ -32,10 +32,20 @@ WALRUS_AGGREGATOR = https:/$()/aggregator.walrus-mainnet.walrus.space
 // self-hosted zentos or localhost (e.g. http:/$()/localhost:3000).
 BACKEND_BASE_URL = https:/$()/tidalform.xyz
 
-// --- Google OAuth (iOS client id from Google Cloud Console) -------------------
-// VERIFY: paste your iOS OAuth *client id*. The native GoogleSignIn-iOS flow yields
-// the ID token you POST to /api/auth/google. Reversed-client-id goes in URL Types.
-GOOGLE_CLIENT_ID = YOUR_IOS_OAUTH_CLIENT_ID.apps.googleusercontent.com
+// --- Google OAuth (Tideform / tidalform.xyz Google Cloud project) -------------
+// Two IDs from the SAME project (project number 626577489375):
+//
+//  1. GOOGLE_IOS_CLIENT_ID  — create an *iOS* OAuth client in the Console (bundle
+//     id = this app's). GoogleSignIn-iOS needs it as GIDClientID, and its
+//     reversed form goes in URL Types. Create it, then paste below.
+//  2. GOOGLE_SERVER_CLIENT_ID — the existing WEB client (public value below). Pass
+//     it to GoogleSignIn as `serverClientID` so the issued ID token's audience is
+//     one the live backend's /api/auth/google already trusts. Without this, the
+//     backend rejects the iOS token (the "aud mismatch" gotcha).
+GOOGLE_IOS_CLIENT_ID = YOUR_IOS_OAUTH_CLIENT_ID.apps.googleusercontent.com
+GOOGLE_SERVER_CLIENT_ID = 626577489375-1qd6h554a1ai7lul2dr0kld0pnlma085.apps.googleusercontent.com
+// Back-compat alias some code reads; set it to the server (web) client id.
+GOOGLE_CLIENT_ID = 626577489375-1qd6h554a1ai7lul2dr0kld0pnlma085.apps.googleusercontent.com
 
 // --- Seal key servers (private fields; comma-separated object IDs) ------------
 // MAINNET free/public key server, threshold 1 (source-of-truth §7).
